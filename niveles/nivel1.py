@@ -1,106 +1,118 @@
-import tkinter as tk
+from entorno import Pinchos, PlacaPresion
+from personajes import SistemaJugadores
 
-ANCHO, ALTO = 800, 600
-FPS_MS = 16
 
-class NivelTemplate(tk.Toplevel): # Usamos Toplevel para abrirlo desde el selector
-    def __init__(self, parent, tiempo_limite_seg=30, callback_regresar=None):
-        super().__init__(parent)
-        self.title("Nivel del Juego - Unir Bolas")
-        self.geometry(f"{ANCHO}x{ALTO}")
-        self.resizable(False, False)
-        
-        self.callback_regresar = callback_regresar
-        
-        # Canvas principal (similar a tu taller)
-        self.canvas = tk.Canvas(self, width=ANCHO, height=ALTO, bg="#0B1220", highlightthickness=0)
-        self.canvas.pack()
+class Nivel1:
+    def __init__(self, app):
+        self.app = app
+        self.suelo_y = self.app.alto - 60
+        self.elementos = []
 
-        # Control de tiempo (Límite)
-        self.tiempo_limite = tiempo_limite_seg * 1000 # Convertido a milisegundos
-        self.tiempo_inicio = tk.IntVar(value=tiempo_limite_seg)
-        
-        # Textos en pantalla (Interfaz)
-        self.txt_tiempo = self.canvas.create_text(
-            ANCHO - 80, 30, fill="#E6EDF5", font=("Helvetica", 14, "bold"), text=f"Tiempo: {tiempo_limite_seg}s"
+        self.inicio_x = 180
+        self.inicio_y = self.suelo_y - 40
+        self.jugadores = SistemaJugadores(
+            x=self.inicio_x,
+            y=self.inicio_y,
+            controles_fu=self.app.controles_fu,
+            controles_fi=self.app.controles_fi,
         )
-        
-        # Variables de estado
-        self.en_pausa = False
-        self.terminado = False
-        self.bolas_unidas = False
 
-        # --- AQUÍ LLAMAS A TUS PERSONAJES DESDE EL OTRO ARCHIVO ---
-        # Ejemplo: from personajes import DobleBola
-        # self.jugadores = DobleBola(self.canvas)
-        
-        # Controles simultáneos (ejemplo con flechas o WASD)
-        self.bind("<KeyPress>", self.tecla_presionada)
-        self.bind("<KeyRelease>", self.tecla_soltada)
+        alto_placa = 15
+        ancho_placa = 20
+        y_placa = self.suelo_y - alto_placa
+        espacio = self.app.ancho // 4
 
-        # Iniciar temporizadores y bucle de juego
-        self.iniciar_tiempo()
-        self.paso()
+        self.placas = [
+            PlacaPresion(
+                espacio * 1 - ancho_placa // 2,
+                y_placa,
+                espacio * 1 + ancho_placa // 2,
+                self.suelo_y,
+                nombre_requerido="fi",
+                color_base="#cd2f2f",
+                color_activa="red",
+            ),
+            PlacaPresion(
+                espacio * 2 - ancho_placa // 2,
+                y_placa,
+                espacio * 2 + ancho_placa // 2,
+                self.suelo_y,
+                nombre_requerido="fu",
+                color_base="#d6c84c",
+                color_activa="yellow",
+            ),
+            PlacaPresion(
+                espacio * 3 - ancho_placa // 2,
+                y_placa,
+                espacio * 3 + ancho_placa // 2,
+                self.suelo_y,
+                nombre_requerido="fusion",
+                color_base="#d38b4f",
+                color_activa="orange",
+            ),
+        ]
 
-    def iniciar_tiempo(self):
-        """Maneja la cuenta regresiva del nivel."""
-        if self.terminado or self.en_pausa:
-            return
-        
-        if self.tiempo_limite > 0:
-            self.tiempo_limite -= 1000
-            self.tiempo_set = self.tiempo_limite // 1000
-            self.canvas.itemconfig(self.txt_tiempo, text=f"Tiempo: {self.tiempo_set}s")
-            self.after(1000, self.iniciar_tiempo)
-        else:
-            self.fallar_nivel("¡Se acabó el tiempo!\nReiniciando nivel...")
+        alto_pinchos = 15
+        ancho_pinchos = 100
 
-    def tecla_presionada(self, event):
-        # Controlar ambas bolas simultáneamente según la tecla
-        if event.keysym in ["Left", "Right", "Up", "Down", "a", "d", "w", "s"]:
-            # self.jugadores.mover(event.keysym)
-            pass
+        centro_pinchos = (espacio * 1 + espacio * 2) // 2
+        self.pinchos = [
+            Pinchos(
+                centro_pinchos - ancho_pinchos // 2,
+                self.suelo_y - alto_pinchos,
+                centro_pinchos + ancho_pinchos // 2,
+                self.suelo_y,
+                cantidad=4,
+            )
+        ]
 
-    def tecla_soltada(self, event):
-        # Detener movimiento si es necesario
-        pass
+    def mostrar(self):
+        self.ocultar()
+        c = self.app.canvas
+        w = self.app.ancho
+        h = self.app.alto
+
+        plataforma = c.create_rectangle(0, self.suelo_y, w, h, fill="#475569", outline="")
+        ayuda = c.create_text(
+            20,
+            25,
+            anchor="w",
+            text="NIVEL 1 | Placas: Roja = fi | Amarilla = fu | Naranja = fusion | Dividir: E | ESC: Volver",
+            fill="white",
+            font=("Arial", 11, "bold"),
+        )
+        self.elementos = [plataforma, ayuda]
+
+        for placa in self.placas:
+            placa.dibujar(c)
+        for pincho in self.pinchos:
+            pincho.dibujar(c)
+        self.jugadores.dibujar(c)
+
+    def ocultar(self):
+        for item in self.elementos:
+            self.app.canvas.delete(item)
+        self.elementos = []
+
+        for placa in self.placas:
+            placa.borrar(self.app.canvas)
+        for pincho in self.pinchos:
+            pincho.borrar(self.app.canvas)
+        self.jugadores.borrar(self.app.canvas)
 
     def actualizar(self):
-        if self.en_pausa or self.terminado:
-            return
+        self.jugadores.actualizar(self.app.teclas, self.suelo_y, self.app.canvas)
+        activas = self.jugadores.bolas_activas()
 
-        # 1. Actualizar posición de las bolas
-        # self.jugadores.actualizar()
+        for pincho in self.pinchos:
+            if pincho.colisiona_con_bolas(activas):
+                self.jugadores.borrar(self.app.canvas)
+                self.jugadores.reiniciar(self.inicio_x, self.inicio_y)
+                self.jugadores.dibujar(self.app.canvas)
+                return
 
-        # 2. Comprobar si ambas bolas se han unido
-        # if self.jugadores.verificar_union():
-        #     self.bolas_unidas = True
+        for placa in self.placas:
+            placa.comprobar(activas)
+            placa.dibujar(self.app.canvas)
 
-        # 3. Comprobar si llegaron al mecanismo final con la condición cumplida
-        # if self.verificar_meta() and self.bolas_unidas:
-        #     self.ganar_nivel()
-
-    def paso(self):
-        """Bucle principal idéntico al de tu taller."""
-        self.actualizar()
-        if not self.terminado:
-            self.after(FPS_MS, self.paso)
-
-    def fallar_nivel(self, mensaje):
-        self.terminado = True
-        self.canvas.create_text(
-            ANCHO / 2, ALTO / 2, text=mensaje, fill="#F43F5E", font=("Helvetica", 20, "bold"), justify="center"
-        )
-        # Reiniciar el nivel después de 2 segundos
-        self.after(2000, self.reiniciar_nivel)
-
-    def reiniciar_nivel(self):
-        self.destroy()
-        # Volver a instanciar el nivel actual
-
-    def ganar_nivel(self):
-        self.terminado = True
-        self.canvas.create_text(
-            ANCHO / 2, ALTO / 2, text="¡Nivel Superado!", fill="#55F765", font=("Helvetica", 22, "bold")
-        )
-        self.after(2000, self.destroy)
+        self.jugadores.dibujar(self.app.canvas)
