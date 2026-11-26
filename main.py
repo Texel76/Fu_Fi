@@ -3,6 +3,7 @@ from menu import Menu
 from niveles.nivel1 import Nivel1
 from controles import controles_fu, controles_fi
 
+
 class App:
     def __init__(self, root):
         self.root = root
@@ -19,7 +20,6 @@ class App:
             bg="black",
             highlightthickness=0,
         )
-
         self.canvas.pack(fill="both", expand=True)
 
         self.teclas = set()
@@ -34,6 +34,8 @@ class App:
 
         root.bind("<KeyPress>", self.tecla_abajo)
         root.bind("<KeyRelease>", self.tecla_arriba)
+
+        self._after_id = None
         self.bucle()
 
     def limpiar_seleccion_niveles(self):
@@ -107,8 +109,11 @@ class App:
             self.nivel1.mostrar()
 
     def salir_juego(self):
-        self.root.quit()
+        if self._after_id is not None:
+            self.root.after_cancel(self._after_id)
+            self._after_id = None
         self.root.destroy()
+        self.root.quit()
 
     def tecla_abajo(self, evento):
         tecla = evento.keysym.lower()
@@ -121,8 +126,6 @@ class App:
         elif tecla == "e" and self.modo == "nivel1" and self.nivel1 is not None:
             self.nivel1.jugadores.alternar_division(self.canvas)
 
-
-
     def tecla_arriba(self, evento):
         self.teclas.discard(evento.keysym.lower())
 
@@ -132,7 +135,7 @@ class App:
         elif self.modo == "nivel1" and self.nivel1 is not None:
             self.nivel1.actualizar()
 
-        self.root.after(16, self.bucle)
+        self._after_id = self.root.after(16, self.bucle)
 
 
 if __name__ == "__main__":

@@ -29,16 +29,36 @@ class Bola:
             self.vy = SALTO_BASE * self.multiplicador_salto
             self.en_suelo = False
 
-    def aplicar_gravedad(self, suelo_y):
+    def aplicar_gravedad(self, suelo_y, superficies=None):
         self.vy += GRAVEDAD
+        anterior_y = self.y
         self.y += self.vy
+        self.en_suelo = False
 
         if self.y + self.radio >= suelo_y:
             self.y = suelo_y - self.radio
             self.vy = 0.0
             self.en_suelo = True
-        else:
-            self.en_suelo = False
+
+        if superficies:
+            for x1, y1, x2 in superficies:
+                dentro_x = self.x + self.radio >= x1 and self.x - self.radio <= x2
+                venia_arriba = anterior_y + self.radio <= y1 + 8
+                cruzo_techo = self.y + self.radio >= y1
+                if dentro_x and venia_arriba and cruzo_techo and self.vy >= 0:
+                    self.y = y1 - self.radio
+                    self.vy = 0.0
+                    self.en_suelo = True
+
+        if superficies:
+            for x1, y1, x2 in superficies:
+                dentro_x = self.x + self.radio >= x1 and self.x - self.radio <= x2
+                venia_arriba = anterior_y + self.radio <= y1 + 8
+                cruzo_techo = self.y + self.radio >= y1
+                if dentro_x and venia_arriba and cruzo_techo and self.vy >= 0:
+                    self.y = y1 - self.radio
+                    self.vy = 0.0
+                    self.en_suelo = True
 
     def dibujar(self, canvas):
         x1 = self.x - self.radio
@@ -122,21 +142,21 @@ class SistemaJugadores:
             self.fusion.en_suelo = False
             self.dividido = False
 
-    def actualizar(self, teclas, suelo_y, canvas=None):
+    def actualizar(self, teclas, suelo_y, canvas=None, superficies=None):
         if not self.dividido:
             izq = self.controles_fu.izq if self.controles_fu.izq in teclas else self.controles_fi.izq
             der = self.controles_fu.der if self.controles_fu.der in teclas else self.controles_fi.der
             self.fusion.mover_horizontal(teclas, izq, der)
             self.fusion.intentar_saltar(teclas, (self.controles_fu.arr, self.controles_fi.arr))
-            self.fusion.aplicar_gravedad(suelo_y)
+            self.fusion.aplicar_gravedad(suelo_y, superficies)
         else:
             self.fu.mover_horizontal(teclas, self.controles_fu.izq, self.controles_fu.der)
             self.fu.intentar_saltar(teclas, (self.controles_fu.arr,))
-            self.fu.aplicar_gravedad(suelo_y)
+            self.fu.aplicar_gravedad(suelo_y, superficies)
 
             self.fi.mover_horizontal(teclas, self.controles_fi.izq, self.controles_fi.der)
             self.fi.intentar_saltar(teclas, (self.controles_fi.arr,))
-            self.fi.aplicar_gravedad(suelo_y)
+            self.fi.aplicar_gravedad(suelo_y, superficies)
 
             if canvas is not None:
                 self._comprobar_fusion_automatica(canvas)
