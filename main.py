@@ -1,6 +1,7 @@
 import tkinter as tk
 from menu import Menu
 from niveles.nivel1 import Nivel1
+from niveles.nivel2 import Nivel2
 from controles import controles_fu, controles_fi
 
 class App:
@@ -27,7 +28,11 @@ class App:
         self.elementos_seleccion = []
         self.controles_fu = controles_fu
         self.controles_fi = controles_fi
-        self.nivel1 = Nivel1(self)
+        self.niveles = {
+            1: Nivel1(self),
+            2: Nivel2(self),
+        }
+        self.nivel_actual = None
 
         self.menu = Menu(self)
         self.menu.mostrar()
@@ -36,6 +41,11 @@ class App:
         root.bind("<KeyRelease>", self.tecla_arriba)
         self.bucle()
 
+    def ocultar_nivel_actual(self):
+        if self.nivel_actual is not None:
+            self.nivel_actual.ocultar()
+            self.nivel_actual = None
+    
     def limpiar_seleccion_niveles(self):
         for item in self.elementos_seleccion:
             if isinstance(item, tk.Widget):
@@ -47,14 +57,12 @@ class App:
     def ir_a_menu(self):
         self.modo = "menu"
         self.limpiar_seleccion_niveles()
-        if self.nivel1 is not None:
-            self.nivel1.ocultar()
+        self.ocultar_nivel_actual()
         self.menu.mostrar()
 
     def ir_a_seleccion_niveles(self):
         self.menu.ocultar()
-        if self.nivel1 is not None:
-            self.nivel1.ocultar()
+        self.ocultar_nivel_actual()
         self.limpiar_seleccion_niveles()
         self.modo = "seleccion_niveles"
 
@@ -67,6 +75,7 @@ class App:
             fill="orange",
             font=("Arial", 28, "bold"),
         )
+        self.elementos_seleccion = [texto]
 
         estilo_boton = {
             "font": ("Arial", 16, "bold"),
@@ -82,29 +91,32 @@ class App:
             "cursor": "hand2",
         }
 
-        btn_nivel1 = tk.Button(
-            self.canvas,
-            text="Nivel 1",
-            command=self.ir_a_nivel1,
-            **estilo_boton,
-        )
+        # Un botón por cada nivel del diccionario
+        for i, numero in enumerate(self.niveles):
+            boton = tk.Button(
+                self.canvas,
+                text=f"Nivel {numero}",
+                command=lambda n=numero: self.ir_a_nivel(n),
+                **estilo_boton,
+            )
+            ventana = self.canvas.create_window(w // 2, h // 2 - 20 + i * 70, window=boton)
+            self.elementos_seleccion += [boton, ventana]
+
         btn_volver = tk.Button(
             self.canvas,
             text="Volver",
             command=self.ir_a_menu,
             **estilo_boton,
         )
-
-        win_nivel1 = self.canvas.create_window(w // 2, h // 2 - 20, window=btn_nivel1)
         win_volver = self.canvas.create_window(w // 2, h - 100, window=btn_volver)
-        self.elementos_seleccion = [texto, btn_nivel1, btn_volver, win_nivel1, win_volver]
+        self.elementos_seleccion += [btn_volver, win_volver]
 
-    def ir_a_nivel1(self):
+    def ir_a_nivel(self, numero):
         self.menu.ocultar()
         self.limpiar_seleccion_niveles()
-        self.modo = "nivel1"
-        if self.nivel1 is not None:
-            self.nivel1.mostrar()
+        self.modo = "nivel"
+        self.nivel_actual = self.niveles[numero]
+        self.nivel_actual.mostrar()
 
     def salir_juego(self):
         self.root.quit()
@@ -118,8 +130,8 @@ class App:
                 self.ir_a_menu()
             elif self.modo != "menu":
                 self.ir_a_seleccion_niveles()
-        elif tecla == "e" and self.modo == "nivel1" and self.nivel1 is not None:
-            self.nivel1.jugadores.alternar_division(self.canvas)
+        elif tecla == "e" and self.modo == "nivel":
+            self.nivel_actual.jugadores.alternar_division(self.canvas)
 
 
 
@@ -129,8 +141,8 @@ class App:
     def bucle(self):
         if self.modo == "menu":
             self.menu.actualizar()
-        elif self.modo == "nivel1" and self.nivel1 is not None:
-            self.nivel1.actualizar()
+        elif self.modo == "nivel":
+            self.nivel_actual.actualizar()
 
         self.root.after(16, self.bucle)
 
